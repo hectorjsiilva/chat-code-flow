@@ -4,11 +4,15 @@ interface SQLTemplate {
   keywords: string[];
   query: string;
   description: string;
+  type: string; // Nuevo campo para identificar el tipo
+  recommendedCharts: string[]; // Tipos de gráficos recomendados
 }
 
 const sqlTemplates: SQLTemplate[] = [
   {
     keywords: ['camas', 'ocupación', 'disponibles', 'libres', 'unidad'],
+    type: 'camas',
+    recommendedCharts: ['bar', 'pie', 'line'],
     query: `-- Consulta de ocupación de camas por unidad médica
 SELECT 
     um.nombre_unidad,
@@ -27,6 +31,8 @@ ORDER BY porcentaje_ocupacion DESC;`,
   },
   {
     keywords: ['pacientes', 'gravedad', 'crítico', 'grave', 'leve', 'moderado'],
+    type: 'pacientes',
+    recommendedCharts: ['pie', 'bar', 'line'],
     query: `-- Análisis de pacientes por gravedad y días de estancia
 SELECT 
     p.estado_gravedad,
@@ -49,6 +55,8 @@ ORDER BY
   },
   {
     keywords: ['emergencias', 'urgencias', 'prioridad', 'tiempo', 'atención'],
+    type: 'emergencias',
+    recommendedCharts: ['bar', 'line', 'pie'],
     query: `-- Reporte de emergencias por prioridad y tiempo de atención
 SELECT 
     e.prioridad,
@@ -72,6 +80,8 @@ ORDER BY
   },
   {
     keywords: ['quirófanos', 'cirugías', 'operaciones', 'quirófano', 'sala'],
+    type: 'quirofanos',
+    recommendedCharts: ['bar', 'pie'],
     query: `-- Estado actual de quirófanos y cirugías programadas
 SELECT 
     q.numero_quirofano,
@@ -91,6 +101,8 @@ ORDER BY q.numero_quirofano;`,
   },
   {
     keywords: ['personal', 'médico', 'doctores', 'especialidad', 'turno'],
+    type: 'personal',
+    recommendedCharts: ['bar', 'line'],
     query: `-- Personal médico disponible por especialidad y turno
 SELECT 
     pm.especialidad,
@@ -107,6 +119,8 @@ ORDER BY personal_activo DESC, total_personal DESC;`,
   },
   {
     keywords: ['historial', 'ocupación', 'tendencia', 'días', 'estadística'],
+    type: 'historial',
+    recommendedCharts: ['line', 'area'],
     query: `-- Histórico de ocupación de camas últimos 30 días
 SELECT 
     DATE(hoc.fecha_ocupacion) as fecha,
@@ -125,7 +139,12 @@ LIMIT 30;`,
   }
 ];
 
-export function generateCoherentSQL(prompt: string): { query: string; description: string } {
+export function generateCoherentSQL(prompt: string): { 
+  query: string; 
+  description: string; 
+  type: string;
+  recommendedCharts: string[];
+} {
   const lowerPrompt = prompt.toLowerCase();
   
   // Buscar el template que mejor coincida con el prompt
@@ -136,14 +155,18 @@ export function generateCoherentSQL(prompt: string): { query: string; descriptio
   if (matchedTemplate) {
     return {
       query: matchedTemplate.query,
-      description: matchedTemplate.description
+      description: matchedTemplate.description,
+      type: matchedTemplate.type,
+      recommendedCharts: matchedTemplate.recommendedCharts
     };
   }
   
   // Si no hay coincidencia exacta, devolver una consulta general
   return {
-    query: sqlTemplates[0].query, // Consulta de camas por defecto
-    description: 'Consulta general de ocupación hospitalaria'
+    query: sqlTemplates[0].query,
+    description: 'Consulta general de ocupación hospitalaria',
+    type: sqlTemplates[0].type,
+    recommendedCharts: sqlTemplates[0].recommendedCharts
   };
 }
 

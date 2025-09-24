@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Database, BarChart3 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { Database } from "lucide-react";
 import { FixedChatInput } from "./FixedChatInput";
+import { ChartTypeSelector } from "./ChartTypeSelector";
+import { DynamicCharts } from "./DynamicCharts";
 import { generateCoherentSQL } from "@/utils/sqlGenerator";
+import { generateCoherentChartData } from "@/utils/chartDataGenerator";
 import klinikaLogo from "@/assets/klinika-logo.avif";
 
 interface Message {
@@ -16,6 +18,8 @@ interface Message {
 interface SQLResult {
   query: string;
   description: string;
+  type: string;
+  recommendedCharts: string[];
 }
 
 export function MedicalDashboard() {
@@ -23,35 +27,11 @@ export function MedicalDashboard() {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [showChartSelector, setShowChartSelector] = useState(false);
   const [showCharts, setShowCharts] = useState(false);
   const [currentSQL, setCurrentSQL] = useState<SQLResult | null>(null);
-
-  // Datos médicos estáticos para los gráficos
-  const bedData = [
-    { name: 'UCI', camas_ocupadas: 18, camas_totales: 24, pacientes_criticos: 12 },
-    { name: 'Cardiología', camas_ocupadas: 28, camas_totales: 35, pacientes_criticos: 8 },
-    { name: 'Neurología', camas_ocupadas: 22, camas_totales: 30, pacientes_criticos: 15 },
-    { name: 'Traumatología', camas_ocupadas: 32, camas_totales: 40, pacientes_criticos: 5 },
-    { name: 'Pediatría', camas_ocupadas: 15, camas_totales: 25, pacientes_criticos: 3 },
-    { name: 'Emergencias', camas_ocupadas: 45, camas_totales: 50, pacientes_criticos: 22 },
-  ];
-
-  const flowData = [
-    { name: 'Lun', ingresos: 45, altas: 38 },
-    { name: 'Mar', ingresos: 52, altas: 41 },
-    { name: 'Mie', ingresos: 48, altas: 45 },
-    { name: 'Jue', ingresos: 61, altas: 49 },
-    { name: 'Vie', ingresos: 55, altas: 52 },
-    { name: 'Sab', ingresos: 38, altas: 44 },
-    { name: 'Dom', ingresos: 32, altas: 41 },
-  ];
-
-  const gravityData = [
-    { name: 'Leve', value: 45, color: '#10B981' },
-    { name: 'Moderado', value: 28, color: '#F59E0B' },
-    { name: 'Grave', value: 18, color: '#F97316' },
-    { name: 'Crítico', value: 9, color: '#DC2626' },
-  ];
+  const [selectedChartType, setSelectedChartType] = useState<'bar' | 'line' | 'pie' | 'area' | 'scatter'>('bar');
+  const [currentChartData, setCurrentChartData] = useState<any[]>([]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -69,15 +49,25 @@ export function MedicalDashboard() {
     const sqlResult = generateCoherentSQL(input);
     setCurrentSQL(sqlResult);
     
+    // Configurar el tipo de gráfico por defecto según el tipo de consulta
+    const defaultChart = sqlResult.recommendedCharts[0] as any;
+    setSelectedChartType(defaultChart);
+    
     setInput("");
     setIsProcessing(true);
     setShowCode(false);
+    setShowChartSelector(false);
     setShowCharts(false);
 
-    // Simular procesamiento
+    // Simular procesamiento de código SQL
     setTimeout(() => {
       setShowCode(true);
+      setShowChartSelector(true);
+      
+      // Simular procesamiento de gráficos
       setTimeout(() => {
+        const chartData = generateCoherentChartData(sqlResult.type, defaultChart);
+        setCurrentChartData(chartData);
         setShowCharts(true);
         setIsProcessing(false);
       }, 3000);
@@ -86,6 +76,14 @@ export function MedicalDashboard() {
 
   const handleSelectPrompt = (prompt: string) => {
     setInput(prompt);
+  };
+
+  const handleChartTypeChange = (newType: 'bar' | 'line' | 'pie' | 'area' | 'scatter') => {
+    setSelectedChartType(newType);
+    if (currentSQL) {
+      const newChartData = generateCoherentChartData(currentSQL.type, newType);
+      setCurrentChartData(newChartData);
+    }
   };
 
   const LoadingAnimation = ({ text }: { text: string }) => (
@@ -143,7 +141,7 @@ export function MedicalDashboard() {
 
             {/* Processing Animation */}
             {isProcessing && !showCode && (
-              <LoadingAnimation text="Analizando consulta y generando SQL..." />
+              <LoadingAnimation text="Analizando consulta y generando SQL coherente..." />
             )}
 
             {/* SQL Code Display */}
@@ -165,122 +163,26 @@ export function MedicalDashboard() {
               </Card>
             )}
 
-            {isProcessing && showCode && !showCharts && (
-              <LoadingAnimation text="Generando visualizaciones médicas..." />
+            {/* Chart Type Selector */}
+            {showChartSelector && currentSQL && (
+              <div className="animate-bounce-in">
+                <ChartTypeSelector
+                  selectedType={selectedChartType}
+                  onTypeChange={handleChartTypeChange}
+                  availableTypes={currentSQL.recommendedCharts}
+                  disabled={isProcessing}
+                />
+              </div>
             )}
 
-            {/* Charts Display */}
-            {showCharts && (
-              <div className="space-y-6 animate-bounce-in">
-                <div className="flex items-center space-x-3 mb-6">
-                  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                    <BarChart3 className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-blue-800">Panel de Análisis Médico</h3>
-                </div>
+            {isProcessing && showCode && !showCharts && (
+              <LoadingAnimation text="Generando visualizaciones coherentes con la consulta..." />
+            )}
 
-                <div className="grid gap-6">
-                  {/* Bed Occupancy Chart */}
-                  <Card className="border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50">
-                    <CardHeader className="pb-4">
-                      <CardTitle className="flex items-center space-x-2 text-blue-700 text-lg">
-                        <BarChart3 className="w-5 h-5" />
-                        <span>Ocupación de Camas por Unidad</span>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={bedData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E0F2FE" />
-                            <XAxis dataKey="name" stroke="#1E40AF" fontSize={12} angle={-45} textAnchor="end" height={60} />
-                            <YAxis stroke="#1E40AF" fontSize={12} />
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: '#F0F9FF',
-                                border: '1px solid #BFDBFE',
-                                borderRadius: '12px'
-                              }}
-                            />
-                            <Bar dataKey="camas_ocupadas" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Camas Ocupadas" />
-                            <Bar dataKey="camas_totales" fill="#93C5FD" radius={[4, 4, 0, 0]} name="Camas Totales" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {/* Patient Flow Chart */}
-                    <Card className="border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="flex items-center space-x-2 text-blue-700 text-lg">
-                          <BarChart3 className="w-5 h-5" />
-                          <span>Flujo de Pacientes Semanal</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-72">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={flowData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#E0F2FE" />
-                              <XAxis dataKey="name" stroke="#1E40AF" fontSize={12} />
-                              <YAxis stroke="#1E40AF" fontSize={12} />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: '#F0F9FF',
-                                  border: '1px solid #BFDBFE',
-                                  borderRadius: '12px'
-                                }}
-                              />
-                              <Line type="monotone" dataKey="ingresos" stroke="#3B82F6" strokeWidth={3} dot={{ fill: '#3B82F6', strokeWidth: 2, r: 6 }} name="Ingresos" />
-                              <Line type="monotone" dataKey="altas" stroke="#10B981" strokeWidth={3} dot={{ fill: '#10B981', strokeWidth: 2, r: 6 }} name="Altas" />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Gravity Distribution Chart */}
-                    <Card className="border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50">
-                      <CardHeader className="pb-4">
-                        <CardTitle className="flex items-center space-x-2 text-blue-700 text-lg">
-                          <BarChart3 className="w-5 h-5" />
-                          <span>Distribución por Gravedad</span>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="h-72">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                              <Pie
-                                data={gravityData}
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={80}
-                                innerRadius={40}
-                                dataKey="value"
-                                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                labelLine={false}
-                              >
-                                {gravityData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                              </Pie>
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: '#F0F9FF',
-                                  border: '1px solid #BFDBFE',
-                                  borderRadius: '12px'
-                                }}
-                              />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
+            {/* Dynamic Charts Display */}
+            {showCharts && currentChartData.length > 0 && (
+              <div className="animate-bounce-in">
+                <DynamicCharts chartData={currentChartData} />
               </div>
             )}
           </div>
