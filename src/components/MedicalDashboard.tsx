@@ -5,8 +5,8 @@ import { FixedChatInput } from "./FixedChatInput";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { DynamicCharts } from "./DynamicCharts";
 import { generateCoherentSQL } from "@/utils/sqlGenerator";
-import { generateCoherentChartData } from "@/utils/chartDataGenerator";
-import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
+import { generateChartsFromRealData } from "@/utils/chartDataGenerator";
+import { useRealSupabaseData } from "@/hooks/useRealSupabaseData";
 import klinikaLogo from "@/assets/klinika-logo.avif";
 
 interface Message {
@@ -33,8 +33,8 @@ export function MedicalDashboard() {
   const [currentSQL, setCurrentSQL] = useState<SQLResult | null>(null);
   const [selectedChartType, setSelectedChartType] = useState<'bar' | 'line' | 'pie' | 'area' | 'scatter'>('bar');
   const [currentChartData, setCurrentChartData] = useState<any[]>([]);
-  const [realData, setRealData] = useState<any[]>([]);
-  const { executeQuery } = useSupabaseQuery();
+  
+  const { data: supabaseData, loading: queryLoading, executeQuery } = useRealSupabaseData();
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -48,11 +48,9 @@ export function MedicalDashboard() {
 
     setMessages(prev => [...prev, userMessage]);
     
-    // Generar SQL coherente con el prompt
     const sqlResult = generateCoherentSQL(input);
     setCurrentSQL(sqlResult);
     
-    // Configurar el tipo de gráfico por defecto según el tipo de consulta
     const defaultChart = sqlResult.recommendedCharts[0] as any;
     setSelectedChartType(defaultChart);
     
@@ -62,28 +60,19 @@ export function MedicalDashboard() {
     setShowChartSelector(false);
     setShowCharts(false);
 
-    // Mostrar código SQL inmediatamente
-    setShowCode(true);
-    setShowChartSelector(true);
-    
-    // Ejecutar consulta real en Supabase
-    try {
-      const data = await executeQuery(sqlResult.query);
-      setRealData(data);
+    setTimeout(() => {
+      setShowCode(true);
+      setShowChartSelector(true);
       
-      // Generar gráficos con datos reales
-      const chartData = generateCoherentChartData(sqlResult.type, defaultChart, data);
-      setCurrentChartData(chartData);
-      setShowCharts(true);
-    } catch (error) {
-      console.error('Error executing query:', error);
-      // Fallback a datos ficticios si falla la consulta
-      const chartData = generateCoherentChartData(sqlResult.type, defaultChart);
-      setCurrentChartData(chartData);
-      setShowCharts(true);
-    } finally {
-      setIsProcessing(false);
-    }
+      setTimeout(async () => {
+        try {
+          await executeQuery(sqlResult.type);
+        } catch (error) {
+          console.error('Error ejecutando consulta:', error);
+          setIsProcessing(false);
+        }
+      }, 1000);
+    }, 1000);
   };
 
   const handleSelectPrompt = (prompt: string) => {
@@ -92,12 +81,20 @@ export function MedicalDashboard() {
 
   const handleChartTypeChange = (newType: 'bar' | 'line' | 'pie' | 'area' | 'scatter') => {
     setSelectedChartType(newType);
-    if (currentSQL) {
-      // Usar datos reales si están disponibles
-      const newChartData = generateCoherentChartData(currentSQL.type, newType, realData);
+    if (currentSQL && supabaseData) {
+      const newChartData = generateChartsFromRealData(currentSQL.type, newType, supabaseData);
       setCurrentChartData(newChartData);
     }
   };
+
+  React.useEffect(() => {
+    if (supabaseData && currentSQL && !queryLoading) {
+      const chartData = generateChartsFromRealData(currentSQL.type, selectedChartType, supabaseData);
+      setCurrentChartData(chartData);
+      setShowCharts(true);
+      setIsProcessing(false);
+    }
+  }, [supabaseData, currentSQL, selectedChartType, queryLoading]);
 
   const LoadingAnimation = ({ text }: { text: string }) => (
     <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 animate-bounce-in">
@@ -117,10 +114,8 @@ export function MedicalDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100">
-      {/* Contenido principal con padding bottom para el chat fijo */}
       <div className="pb-64">
         <div className="max-w-4xl mx-auto p-6">
-          {/* Header */}
           <div className="text-center mb-8 animate-fade-in-up">
             <div className="flex items-center justify-center mb-6">
               <div className="bg-white rounded-2xl p-4 shadow-lg">
@@ -140,7 +135,6 @@ export function MedicalDashboard() {
             </p>
           </div>
 
-          {/* Messages */}
           <div className="space-y-6 mb-6">
             {messages.map((message) => (
               <div key={message.id} className={`animate-slide-up ${message.type === 'user' ? 'ml-auto max-w-2xl' : 'mr-auto max-w-2xl'}`}>
@@ -152,12 +146,10 @@ export function MedicalDashboard() {
               </div>
             ))}
 
-            {/* Processing Animation */}
             {isProcessing && !showCode && (
-              <LoadingAnimation text="Analizando consulta y generando SQL coherente..." />
+              <LoadingAnimation text="Analizando consulta y obteniendo datos de Supabase..." />
             )}
 
-            {/* SQL Code Display */}
             {showCode && currentSQL && (
               <Card className="border-blue-200 shadow-md animate-bounce-in">
                 <CardHeader className="pb-3">
@@ -176,7 +168,6 @@ export function MedicalDashboard() {
               </Card>
             )}
 
-            {/* Chart Type Selector */}
             {showChartSelector && currentSQL && (
               <div className="animate-bounce-in">
                 <ChartTypeSelector
@@ -189,10 +180,9 @@ export function MedicalDashboard() {
             )}
 
             {isProcessing && showCode && !showCharts && (
-              <LoadingAnimation text="Generando visualizaciones coherentes con la consulta..." />
+              <LoadingAnimation text="Generando visualizaciones con datos reales de Supabase..." />
             )}
 
-            {/* Dynamic Charts Display */}
             {showCharts && currentChartData.length > 0 && (
               <div className="animate-bounce-in">
                 <DynamicCharts chartData={currentChartData} />
@@ -202,7 +192,6 @@ export function MedicalDashboard() {
         </div>
       </div>
 
-      {/* Fixed Chat Input */}
       <FixedChatInput
         input={input}
         onInputChange={setInput}
