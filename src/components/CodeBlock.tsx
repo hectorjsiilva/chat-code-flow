@@ -34,10 +34,10 @@ export function CodeBlock({ code }: CodeBlockProps) {
     <Card className="border-blue-200 shadow-md">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2 text-blue-800">
-            <Database className="w-5 h-5" />
-            <span>Código MySQL Generado</span>
-          </CardTitle>
+        <CardTitle className="flex items-center space-x-2 text-blue-800">
+          <Database className="w-5 h-5" />
+          <span>Consulta SQL Médica Generada</span>
+        </CardTitle>
           <Button
             variant="outline"
             size="sm"

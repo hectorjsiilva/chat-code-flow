@@ -2,100 +2,130 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { BarChart3, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
 
-// Datos simulados para los gráficos
+// Datos simulados médicos para los gráficos
 const barData = [
-  { name: 'Enero', usuarios: 120, ventas: 2400 },
-  { name: 'Febrero', usuarios: 190, ventas: 3200 },
-  { name: 'Marzo', usuarios: 300, ventas: 4100 },
-  { name: 'Abril', usuarios: 280, ventas: 3800 },
-  { name: 'Mayo', usuarios: 450, ventas: 5200 },
-  { name: 'Junio', usuarios: 380, ventas: 4600 },
+  { name: 'UCI', camas_ocupadas: 18, camas_totales: 24, pacientes_criticos: 12 },
+  { name: 'Cardiología', camas_ocupadas: 28, camas_totales: 35, pacientes_criticos: 8 },
+  { name: 'Neurología', camas_ocupadas: 22, camas_totales: 30, pacientes_criticos: 15 },
+  { name: 'Traumatología', camas_ocupadas: 32, camas_totales: 40, pacientes_criticos: 5 },
+  { name: 'Pediatría', camas_ocupadas: 15, camas_totales: 25, pacientes_criticos: 3 },
+  { name: 'Emergencias', camas_ocupadas: 45, camas_totales: 50, pacientes_criticos: 22 },
 ];
 
 const lineData = [
-  { name: 'Sem 1', rendimiento: 65 },
-  { name: 'Sem 2', rendimiento: 78 },
-  { name: 'Sem 3', rendimiento: 82 },
-  { name: 'Sem 4', rendimiento: 88 },
-  { name: 'Sem 5', rendimiento: 95 },
-  { name: 'Sem 6', rendimiento: 92 },
+  { name: 'Lun', ingresos: 45, altas: 38 },
+  { name: 'Mar', ingresos: 52, altas: 41 },
+  { name: 'Mie', ingresos: 48, altas: 45 },
+  { name: 'Jue', ingresos: 61, altas: 49 },
+  { name: 'Vie', ingresos: 55, altas: 52 },
+  { name: 'Sab', ingresos: 38, altas: 44 },
+  { name: 'Dom', ingresos: 32, altas: 41 },
 ];
 
 const pieData = [
-  { name: 'Electrónicos', value: 35, color: '#3B82F6' },
-  { name: 'Ropa', value: 25, color: '#60A5FA' },
-  { name: 'Hogar', value: 20, color: '#93C5FD' },
-  { name: 'Deportes', value: 12, color: '#DBEAFE' },
-  { name: 'Otros', value: 8, color: '#1D4ED8' },
+  { name: 'Leve', value: 45, color: '#10B981' },
+  { name: 'Moderado', value: 28, color: '#F59E0B' },
+  { name: 'Grave', value: 18, color: '#F97316' },
+  { name: 'Crítico', value: 9, color: '#DC2626' },
 ];
 
 export function ChartDisplay() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <BarChart3 className="w-6 h-6 text-blue-600" />
-        <h3 className="text-xl font-semibold text-blue-800">Visualización de Datos</h3>
+      <div className="flex items-center space-x-3 mb-6">
+        <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <BarChart3 className="w-6 h-6" />
+        </div>
+        <h3 className="text-2xl font-bold text-blue-800">Panel de Análisis Médico</h3>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Gráfico de Barras */}
-        <Card className="border-blue-200 shadow-md">
-          <CardHeader className="pb-3">
+        {/* Gráfico de Barras - Ocupación de Camas */}
+        <Card className="border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50">
+          <CardHeader className="pb-4">
             <CardTitle className="flex items-center space-x-2 text-blue-700 text-lg">
               <BarChart3 className="w-5 h-5" />
-              <span>Usuarios vs Ventas</span>
+              <span>Ocupación de Camas por Unidad</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData}>
+                <BarChart data={barData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0F2FE" />
-                  <XAxis dataKey="name" stroke="#1E40AF" />
-                  <YAxis stroke="#1E40AF" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#1E40AF" 
+                    fontSize={12}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis stroke="#1E40AF" fontSize={12} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#F0F9FF',
                       border: '1px solid #BFDBFE',
-                      borderRadius: '8px'
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
                     }}
                   />
-                  <Bar dataKey="usuarios" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="ventas" fill="#60A5FA" radius={[4, 4, 0, 0]} />
+                  <Bar 
+                    dataKey="camas_ocupadas" 
+                    fill="#3B82F6" 
+                    radius={[4, 4, 0, 0]}
+                    name="Camas Ocupadas"
+                  />
+                  <Bar 
+                    dataKey="camas_totales" 
+                    fill="#93C5FD" 
+                    radius={[4, 4, 0, 0]}
+                    name="Camas Totales"
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* Gráfico de Línea */}
-        <Card className="border-blue-200 shadow-md">
-          <CardHeader className="pb-3">
+        {/* Gráfico de Línea - Flujo de Pacientes */}
+        <Card className="border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50">
+          <CardHeader className="pb-4">
             <CardTitle className="flex items-center space-x-2 text-blue-700 text-lg">
               <TrendingUp className="w-5 h-5" />
-              <span>Rendimiento Semanal</span>
+              <span>Flujo de Pacientes Semanal</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineData}>
+                <LineChart data={lineData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0F2FE" />
-                  <XAxis dataKey="name" stroke="#1E40AF" />
-                  <YAxis stroke="#1E40AF" />
+                  <XAxis dataKey="name" stroke="#1E40AF" fontSize={12} />
+                  <YAxis stroke="#1E40AF" fontSize={12} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#F0F9FF',
                       border: '1px solid #BFDBFE',
-                      borderRadius: '8px'
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
                     }}
                   />
                   <Line 
                     type="monotone" 
-                    dataKey="rendimiento" 
+                    dataKey="ingresos" 
                     stroke="#3B82F6" 
                     strokeWidth={3}
-                    dot={{ fill: '#3B82F6', strokeWidth: 2, r: 5 }}
+                    dot={{ fill: '#3B82F6', strokeWidth: 2, r: 6 }}
+                    name="Ingresos"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="altas" 
+                    stroke="#10B981" 
+                    strokeWidth={3}
+                    dot={{ fill: '#10B981', strokeWidth: 2, r: 6 }}
+                    name="Altas"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -104,26 +134,28 @@ export function ChartDisplay() {
         </Card>
       </div>
 
-      {/* Gráfico Circular */}
-      <Card className="border-blue-200 shadow-md">
-        <CardHeader className="pb-3">
+      {/* Gráfico Circular - Gravedad de Pacientes */}
+      <Card className="border-blue-200 shadow-lg bg-gradient-to-br from-white to-blue-50">
+        <CardHeader className="pb-4">
           <CardTitle className="flex items-center space-x-2 text-blue-700 text-lg">
             <PieChartIcon className="w-5 h-5" />
-            <span>Distribución por Categorías</span>
+            <span>Distribución de Pacientes por Gravedad</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row items-center">
-            <div className="h-64 w-full md:w-1/2">
+          <div className="flex flex-col lg:flex-row items-center gap-8">
+            <div className="h-80 w-full lg:w-1/2">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={120}
+                    innerRadius={60}
                     dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name}\n${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
@@ -133,23 +165,29 @@ export function ChartDisplay() {
                     contentStyle={{
                       backgroundColor: '#F0F9FF',
                       border: '1px solid #BFDBFE',
-                      borderRadius: '8px'
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.15)'
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-full md:w-1/2 space-y-2">
+            <div className="w-full lg:w-1/2 space-y-3">
               {pieData.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-white rounded-xl border border-blue-100 shadow-sm">
                   <div className="flex items-center space-x-3">
                     <div 
-                      className="w-4 h-4 rounded-full" 
+                      className="w-5 h-5 rounded-full shadow-md" 
                       style={{ backgroundColor: item.color }}
                     ></div>
-                    <span className="text-blue-800 font-medium">{item.name}</span>
+                    <span className="text-blue-800 font-semibold text-lg">{item.name}</span>
                   </div>
-                  <span className="text-blue-600 font-bold">{item.value}%</span>
+                  <div className="text-right">
+                    <span className="text-blue-900 font-bold text-xl">{item.value}%</span>
+                    <div className="text-blue-600 text-sm">
+                      ~{Math.round(item.value * 2.8)} pacientes
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
