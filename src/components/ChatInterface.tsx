@@ -7,6 +7,7 @@ import { CodeBlock } from "./CodeBlock";
 import { ChartDisplay } from "./ChartDisplay";
 import { LoadingAnimation } from "./LoadingAnimation";
 import klinikaLogo from "@/assets/klinika-logo.avif";
+import { useMedicalData } from "@/hooks/useMedicalData";
 
 interface Message {
   id: string;
@@ -26,32 +27,33 @@ export function ChatInterface() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'idle' | 'generating-code' | 'generating-charts'>('idle');
   const [processedData, setProcessedData] = useState<ProcessingStep>({});
+  const { bedData, flowData, gravityData, loading, refetch } = useMedicalData();
 
   const generateRandomMySQL = () => {
     const queries = [
-      `-- Consulta de ocupación de camas por unidad
+      `-- Consulta de ocupación de camas por unidad médica
 SELECT 
-    u.nombre_unidad,
+    um.nombre_unidad,
     COUNT(c.id) as total_camas,
-    SUM(CASE WHEN c.estado = 'ocupada' THEN 1 ELSE 0 END) as camas_ocupadas,
-    SUM(CASE WHEN c.estado = 'disponible' THEN 1 ELSE 0 END) as camas_libres,
+    COUNT(CASE WHEN c.estado = 'ocupada' THEN 1 END) as camas_ocupadas,
+    COUNT(CASE WHEN c.estado = 'disponible' THEN 1 END) as camas_libres,
     ROUND(
-        (SUM(CASE WHEN c.estado = 'ocupada' THEN 1 ELSE 0 END) * 100.0 / COUNT(c.id)), 2
+        (COUNT(CASE WHEN c.estado = 'ocupada' THEN 1 END) * 100.0 / COUNT(c.id)), 2
     ) as porcentaje_ocupacion
-FROM unidades_medicas u
-LEFT JOIN camas c ON u.id = c.unidad_id
-WHERE u.activa = 1
-GROUP BY u.id, u.nombre_unidad
+FROM unidades_medicas um
+LEFT JOIN camas c ON um.id = c.unidad_id
+WHERE um.activa = true
+GROUP BY um.id, um.nombre_unidad
 ORDER BY porcentaje_ocupacion DESC;`,
 
-      `-- Análisis de pacientes por gravedad y estado
+      `-- Análisis de pacientes por gravedad y días de estancia
 SELECT 
     p.estado_gravedad,
     COUNT(*) as total_pacientes,
-    AVG(DATEDIFF(NOW(), p.fecha_ingreso)) as promedio_dias_estancia,
-    COUNT(CASE WHEN p.alta_medica IS NULL THEN 1 END) as pacientes_activos
+    ROUND(AVG(EXTRACT(DAY FROM (NOW() - p.fecha_ingreso))), 1) as promedio_dias_estancia,
+    COUNT(CASE WHEN p.fecha_alta IS NULL THEN 1 END) as pacientes_hospitalizados
 FROM pacientes p
-WHERE p.fecha_ingreso >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+WHERE p.fecha_ingreso >= NOW() - INTERVAL '30 days'
 GROUP BY p.estado_gravedad
 ORDER BY 
     CASE p.estado_gravedad 
@@ -61,51 +63,62 @@ ORDER BY
         WHEN 'leve' THEN 4
     END;`,
 
-      `-- Reporte de emergencias por turno
-CREATE TABLE reporte_emergencias AS
+      `-- Reporte de emergencias por prioridad y tiempo de atención
 SELECT 
-    DATE(fecha_ingreso) as fecha,
-    CASE 
-        WHEN HOUR(fecha_ingreso) BETWEEN 6 AND 13 THEN 'Mañana'
-        WHEN HOUR(fecha_ingreso) BETWEEN 14 AND 21 THEN 'Tarde'
-        ELSE 'Noche'
-    END as turno,
+    e.prioridad,
     COUNT(*) as total_emergencias,
-    COUNT(CASE WHEN prioridad = 'roja' THEN 1 END) as emergencias_criticas,
-    AVG(tiempo_atencion_minutos) as tiempo_promedio_atencion
+    ROUND(AVG(e.tiempo_atencion_minutos), 1) as tiempo_promedio_atencion,
+    COUNT(CASE WHEN e.estado = 'atendido' THEN 1 END) as emergencias_resueltas,
+    COUNT(CASE WHEN e.estado = 'derivado' THEN 1 END) as emergencias_derivadas
 FROM emergencias e
-WHERE e.fecha_ingreso >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-GROUP BY DATE(fecha_ingreso), turno
-ORDER BY fecha DESC, turno;`,
+WHERE e.fecha_ingreso >= NOW() - INTERVAL '7 days'
+GROUP BY e.prioridad
+ORDER BY 
+    CASE e.prioridad 
+        WHEN 'roja' THEN 1
+        WHEN 'amarilla' THEN 2
+        WHEN 'verde' THEN 3
+        WHEN 'azul' THEN 4
+    END;`,
 
-      `-- Actualización de estado de quirófanos
-UPDATE quirofanos q
-SET 
-    estado = CASE 
-        WHEN EXISTS (
-            SELECT 1 FROM cirugias c 
-            WHERE c.quirofano_id = q.id 
-            AND c.fecha_cirugia = CURDATE()
-            AND c.estado = 'en_proceso'
-        ) THEN 'ocupado'
-        WHEN q.mantenimiento_programado = 1 THEN 'mantenimiento'
-        ELSE 'disponible'
-    END,
-    ultima_actualizacion = NOW()
-WHERE q.activo = 1;`,
-
-      `-- Consulta de personal médico por especialidad
+      `-- Estado actual de quirófanos y cirugías programadas
 SELECT 
-    e.nombre_especialidad,
-    COUNT(pm.id) as total_medicos,
-    COUNT(CASE WHEN pm.turno_actual = 'activo' THEN 1 END) as medicos_activos,
-    COUNT(CASE WHEN pm.disponible_emergencias = 1 THEN 1 END) as disponibles_emergencia,
-    AVG(pm.años_experiencia) as experiencia_promedio
+    q.numero_quirofano,
+    q.estado as estado_quirofano,
+    COUNT(c.id) as cirugias_programadas_hoy,
+    COUNT(CASE WHEN c.estado = 'completada' THEN 1 END) as cirugias_completadas,
+    COUNT(CASE WHEN c.estado = 'en_proceso' THEN 1 END) as cirugias_en_proceso
+FROM quirofanos q
+LEFT JOIN cirugias c ON q.id = c.quirofano_id 
+    AND c.fecha_cirugia = CURRENT_DATE
+WHERE q.activo = true
+GROUP BY q.id, q.numero_quirofano, q.estado
+ORDER BY q.numero_quirofano;`,
+
+      `-- Personal médico disponible por especialidad y turno
+SELECT 
+    pm.especialidad,
+    COUNT(*) as total_personal,
+    COUNT(CASE WHEN pm.turno_actual = 'activo' THEN 1 END) as personal_activo,
+    COUNT(CASE WHEN pm.disponible_emergencias = true AND pm.turno_actual = 'activo' THEN 1 END) as disponible_emergencias,
+    ROUND(AVG(pm.años_experiencia), 1) as experiencia_promedio
 FROM personal_medico pm
-INNER JOIN especialidades e ON pm.especialidad_id = e.id
 WHERE pm.estado_laboral = 'activo'
-GROUP BY e.id, e.nombre_especialidad
-ORDER BY medicos_activos DESC, total_medicos DESC;`
+GROUP BY pm.especialidad
+ORDER BY personal_activo DESC, total_personal DESC;`,
+
+      `-- Histórico de ocupación de camas últimos 30 días
+SELECT 
+    DATE(hoc.fecha_ocupacion) as fecha,
+    COUNT(DISTINCT hoc.cama_id) as camas_ocupadas,
+    COUNT(CASE WHEN hoc.estado_durante_ocupacion = 'critico' THEN 1 END) as pacientes_criticos,
+    COUNT(CASE WHEN hoc.estado_durante_ocupacion = 'grave' THEN 1 END) as pacientes_graves,
+    COUNT(CASE WHEN hoc.fecha_liberacion IS NOT NULL THEN 1 END) as altas_del_dia
+FROM historial_ocupacion_camas hoc
+WHERE hoc.fecha_ocupacion >= NOW() - INTERVAL '30 days'
+GROUP BY DATE(hoc.fecha_ocupacion)
+ORDER BY fecha DESC
+LIMIT 30;`
     ];
     return queries[Math.floor(Math.random() * queries.length)];
   };
@@ -216,7 +229,11 @@ ORDER BY medicos_activos DESC, total_medicos DESC;`
 
             {processedData.charts && (
               <div className="animate-bounce-in">
-                <ChartDisplay />
+                <ChartDisplay 
+                  bedData={bedData}
+                  flowData={flowData}
+                  gravityData={gravityData}
+                />
               </div>
             )}
           </div>

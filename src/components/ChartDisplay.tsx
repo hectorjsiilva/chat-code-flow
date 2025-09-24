@@ -2,34 +2,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import { BarChart3, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
 
-// Datos simulados médicos para los gráficos
-const barData = [
-  { name: 'UCI', camas_ocupadas: 18, camas_totales: 24, pacientes_criticos: 12 },
-  { name: 'Cardiología', camas_ocupadas: 28, camas_totales: 35, pacientes_criticos: 8 },
-  { name: 'Neurología', camas_ocupadas: 22, camas_totales: 30, pacientes_criticos: 15 },
-  { name: 'Traumatología', camas_ocupadas: 32, camas_totales: 40, pacientes_criticos: 5 },
-  { name: 'Pediatría', camas_ocupadas: 15, camas_totales: 25, pacientes_criticos: 3 },
-  { name: 'Emergencias', camas_ocupadas: 45, camas_totales: 50, pacientes_criticos: 22 },
-];
+interface BedOccupancyData {
+  name: string;
+  camas_ocupadas: number;
+  camas_totales: number;
+  pacientes_criticos: number;
+}
 
-const lineData = [
-  { name: 'Lun', ingresos: 45, altas: 38 },
-  { name: 'Mar', ingresos: 52, altas: 41 },
-  { name: 'Mie', ingresos: 48, altas: 45 },
-  { name: 'Jue', ingresos: 61, altas: 49 },
-  { name: 'Vie', ingresos: 55, altas: 52 },
-  { name: 'Sab', ingresos: 38, altas: 44 },
-  { name: 'Dom', ingresos: 32, altas: 41 },
-];
+interface PatientFlowData {
+  name: string;
+  ingresos: number;
+  altas: number;
+}
 
-const pieData = [
-  { name: 'Leve', value: 45, color: '#10B981' },
-  { name: 'Moderado', value: 28, color: '#F59E0B' },
-  { name: 'Grave', value: 18, color: '#F97316' },
-  { name: 'Crítico', value: 9, color: '#DC2626' },
-];
+interface GravityData {
+  name: string;
+  value: number;
+  color: string;
+}
 
-export function ChartDisplay() {
+interface ChartDisplayProps {
+  bedData: BedOccupancyData[];
+  flowData: PatientFlowData[];
+  gravityData: GravityData[];
+}
+
+export function ChartDisplay({ bedData, flowData, gravityData }: ChartDisplayProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-3 mb-6">
@@ -51,7 +49,7 @@ export function ChartDisplay() {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                <BarChart data={bedData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0F2FE" />
                   <XAxis 
                     dataKey="name" 
@@ -99,7 +97,7 @@ export function ChartDisplay() {
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={lineData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                <LineChart data={flowData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E0F2FE" />
                   <XAxis dataKey="name" stroke="#1E40AF" fontSize={12} />
                   <YAxis stroke="#1E40AF" fontSize={12} />
@@ -148,7 +146,7 @@ export function ChartDisplay() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={gravityData}
                     cx="50%"
                     cy="50%"
                     outerRadius={120}
@@ -157,7 +155,7 @@ export function ChartDisplay() {
                     label={({ name, percent }) => `${name}\n${(percent * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
-                    {pieData.map((entry, index) => (
+                    {gravityData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -173,7 +171,7 @@ export function ChartDisplay() {
               </ResponsiveContainer>
             </div>
             <div className="w-full lg:w-1/2 space-y-3">
-              {pieData.map((item, index) => (
+              {gravityData.map((item, index) => (
                 <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-white rounded-xl border border-blue-100 shadow-sm">
                   <div className="flex items-center space-x-3">
                     <div 
