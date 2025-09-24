@@ -7,7 +7,6 @@ import { CodeBlock } from "./CodeBlock";
 import { ChartDisplay } from "./ChartDisplay";
 import { LoadingAnimation } from "./LoadingAnimation";
 import klinikaLogo from "@/assets/klinika-logo.avif";
-import { useMedicalData } from "@/hooks/useMedicalData";
 
 interface Message {
   id: string;
@@ -27,7 +26,33 @@ export function ChatInterface() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<'idle' | 'generating-code' | 'generating-charts'>('idle');
   const [processedData, setProcessedData] = useState<ProcessingStep>({});
-  const { bedData, flowData, gravityData, loading, refetch } = useMedicalData();
+
+  // Datos médicos de muestra para los gráficos
+  const medicalData = {
+    bedData: [
+      { name: 'UCI', camas_ocupadas: 18, camas_totales: 24, pacientes_criticos: 12 },
+      { name: 'Cardiología', camas_ocupadas: 28, camas_totales: 35, pacientes_criticos: 8 },
+      { name: 'Neurología', camas_ocupadas: 22, camas_totales: 30, pacientes_criticos: 15 },
+      { name: 'Traumatología', camas_ocupadas: 32, camas_totales: 40, pacientes_criticos: 5 },
+      { name: 'Pediatría', camas_ocupadas: 15, camas_totales: 25, pacientes_criticos: 3 },
+      { name: 'Emergencias', camas_ocupadas: 45, camas_totales: 50, pacientes_criticos: 22 },
+    ],
+    flowData: [
+      { name: 'Lun', ingresos: 45, altas: 38 },
+      { name: 'Mar', ingresos: 52, altas: 41 },
+      { name: 'Mie', ingresos: 48, altas: 45 },
+      { name: 'Jue', ingresos: 61, altas: 49 },
+      { name: 'Vie', ingresos: 55, altas: 52 },
+      { name: 'Sab', ingresos: 38, altas: 44 },
+      { name: 'Dom', ingresos: 32, altas: 41 },
+    ],
+    gravityData: [
+      { name: 'Leve', value: 45, color: '#10B981' },
+      { name: 'Moderado', value: 28, color: '#F59E0B' },
+      { name: 'Grave', value: 18, color: '#F97316' },
+      { name: 'Crítico', value: 9, color: '#DC2626' },
+    ]
+  };
 
   const generateRandomMySQL = () => {
     const queries = [
@@ -230,9 +255,9 @@ LIMIT 30;`
             {processedData.charts && (
               <div className="animate-bounce-in">
                 <ChartDisplay 
-                  bedData={bedData}
-                  flowData={flowData}
-                  gravityData={gravityData}
+                  bedData={medicalData.bedData}
+                  flowData={medicalData.flowData}
+                  gravityData={medicalData.gravityData}
                 />
               </div>
             )}
