@@ -127,13 +127,13 @@ export function useRealSupabaseData() {
         case 'personal':
           const { data: staffData, error: staffError } = await supabase
             .from('personal_medico')
-            .select('especialidad, turno_actual, estado_laboral, disponible_emergencias, años_experiencia')
+            .select('*')
             .eq('estado_laboral', 'activo');
           
           if (staffError) throw staffError;
           
-          // Agrupar por especialidad
-          const staffGrouped = staffData?.reduce((acc: any, staff) => {
+          // Agrupar por especialidad usando any tipo para evitar issues con ñ
+          const staffGrouped = (staffData as any[])?.reduce((acc: any, staff: any) => {
             const specialty = staff.especialidad || 'sin_especialidad';
             if (!acc[specialty]) {
               acc[specialty] = { total: 0, activos: 0, emergencias: 0, experiencia_total: 0 };
@@ -141,7 +141,7 @@ export function useRealSupabaseData() {
             acc[specialty].total++;
             if (staff.turno_actual === 'activo') acc[specialty].activos++;
             if (staff.disponible_emergencias && staff.turno_actual === 'activo') acc[specialty].emergencias++;
-            acc[specialty].experiencia_total += staff.años_experiencia || 0;
+            acc[specialty].experiencia_total += staff['años_experiencia'] || 0;
             return acc;
           }, {});
           
