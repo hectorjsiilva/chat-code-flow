@@ -6,6 +6,7 @@ import { ChartTypeSelector } from "./ChartTypeSelector";
 import { DynamicCharts } from "./DynamicCharts";
 import { generateCoherentSQL } from "@/utils/sqlGenerator";
 import { generateCoherentChartData } from "@/utils/chartDataGenerator";
+import { useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import klinikaLogo from "@/assets/klinika-logo.avif";
 
 interface Message {
@@ -32,6 +33,8 @@ export function MedicalDashboard() {
   const [currentSQL, setCurrentSQL] = useState<SQLResult | null>(null);
   const [selectedChartType, setSelectedChartType] = useState<'bar' | 'line' | 'pie' | 'area' | 'scatter'>('bar');
   const [currentChartData, setCurrentChartData] = useState<any[]>([]);
+  const [realData, setRealData] = useState<any[]>([]);
+  const { executeQuery } = useSupabaseQuery();
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -59,19 +62,28 @@ export function MedicalDashboard() {
     setShowChartSelector(false);
     setShowCharts(false);
 
-    // Simular procesamiento de código SQL
-    setTimeout(() => {
-      setShowCode(true);
-      setShowChartSelector(true);
+    // Mostrar código SQL inmediatamente
+    setShowCode(true);
+    setShowChartSelector(true);
+    
+    // Ejecutar consulta real en Supabase
+    try {
+      const data = await executeQuery(sqlResult.query);
+      setRealData(data);
       
-      // Simular procesamiento de gráficos
-      setTimeout(() => {
-        const chartData = generateCoherentChartData(sqlResult.type, defaultChart);
-        setCurrentChartData(chartData);
-        setShowCharts(true);
-        setIsProcessing(false);
-      }, 3000);
-    }, 2000);
+      // Generar gráficos con datos reales
+      const chartData = generateCoherentChartData(sqlResult.type, defaultChart, data);
+      setCurrentChartData(chartData);
+      setShowCharts(true);
+    } catch (error) {
+      console.error('Error executing query:', error);
+      // Fallback a datos ficticios si falla la consulta
+      const chartData = generateCoherentChartData(sqlResult.type, defaultChart);
+      setCurrentChartData(chartData);
+      setShowCharts(true);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleSelectPrompt = (prompt: string) => {
@@ -81,7 +93,8 @@ export function MedicalDashboard() {
   const handleChartTypeChange = (newType: 'bar' | 'line' | 'pie' | 'area' | 'scatter') => {
     setSelectedChartType(newType);
     if (currentSQL) {
-      const newChartData = generateCoherentChartData(currentSQL.type, newType);
+      // Usar datos reales si están disponibles
+      const newChartData = generateCoherentChartData(currentSQL.type, newType, realData);
       setCurrentChartData(newChartData);
     }
   };

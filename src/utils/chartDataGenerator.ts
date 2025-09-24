@@ -8,7 +8,16 @@ export interface ChartData {
   yAxis?: string;
 }
 
-export function generateCoherentChartData(sqlType: string, chartType: 'bar' | 'line' | 'pie' | 'area' | 'scatter'): ChartData[] {
+export function generateCoherentChartData(
+  sqlType: string, 
+  chartType: 'bar' | 'line' | 'pie' | 'area' | 'scatter', 
+  realData?: any[]
+): ChartData[] {
+  if (realData && realData.length > 0) {
+    return generateChartsFromRealData(sqlType, chartType, realData);
+  }
+  
+  // Fallback a datos ficticios si no hay datos reales
   switch (sqlType) {
     case 'camas':
       return generateBedChartData(chartType);
@@ -24,6 +33,210 @@ export function generateCoherentChartData(sqlType: string, chartType: 'bar' | 'l
       return generateHistoryChartData(chartType);
     default:
       return generateBedChartData(chartType);
+  }
+}
+
+export function generateChartsFromRealData(
+  sqlType: string, 
+  chartType: 'bar' | 'line' | 'pie' | 'area' | 'scatter', 
+  data: any[]
+): ChartData[] {
+  switch (sqlType) {
+    case 'camas':
+      return generateBedChartsFromData(chartType, data);
+    case 'pacientes':
+      return generatePatientChartsFromData(chartType, data);
+    case 'emergencias':
+      return generateEmergencyChartsFromData(chartType, data);
+    case 'quirofanos':
+      return generateSurgeryChartsFromData(chartType, data);
+    case 'personal':
+      return generateStaffChartsFromData(chartType, data);
+    case 'historial':
+      return generateHistoryChartsFromData(chartType, data);
+    default:
+      return generateBedChartsFromData(chartType, data);
+  }
+}
+
+function generateBedChartsFromData(chartType: string, data: any[]): ChartData[] {
+  switch (chartType) {
+    case 'bar':
+      return [{
+        type: 'bar',
+        data: data.map(item => ({
+          unidad: item.nombre_unidad,
+          ocupadas: item.camas_ocupadas,
+          disponibles: item.camas_libres,
+          mantenimiento: item.camas_mantenimiento,
+          total: item.total_camas
+        })),
+        title: 'Ocupación de Camas por Unidad (Datos Reales)',
+        xAxis: 'unidad',
+        yAxis: 'cantidad'
+      }];
+    case 'pie':
+      return [{
+        type: 'pie',
+        data: data.map(item => ({
+          name: item.nombre_unidad,
+          value: item.porcentaje_ocupacion,
+          color: item.porcentaje_ocupacion > 85 ? '#DC2626' : 
+                 item.porcentaje_ocupacion > 70 ? '#F59E0B' : '#10B981'
+        })),
+        title: 'Porcentaje de Ocupación por Unidad (Datos Reales)'
+      }];
+    case 'line':
+      return [{
+        type: 'line',
+        data: data.map((item, index) => ({
+          unidad: item.nombre_unidad,
+          ocupacion: item.porcentaje_ocupacion,
+          tendencia: item.porcentaje_ocupacion
+        })),
+        title: 'Ocupación por Unidad (Datos Reales)'
+      }];
+    default:
+      return generateBedChartsFromData('bar', data);
+  }
+}
+
+function generatePatientChartsFromData(chartType: string, data: any[]): ChartData[] {
+  switch (chartType) {
+    case 'pie':
+      const total = data.reduce((sum, item) => sum + item.total_pacientes, 0);
+      return [{
+        type: 'pie',
+        data: data.map(item => ({
+          name: item.estado_gravedad,
+          value: Math.round((item.total_pacientes / total) * 100),
+          color: item.estado_gravedad === 'critico' ? '#DC2626' : 
+                 item.estado_gravedad === 'grave' ? '#F97316' :
+                 item.estado_gravedad === 'moderado' ? '#F59E0B' : '#10B981'
+        })),
+        title: 'Distribución de Pacientes por Gravedad (Datos Reales)'
+      }];
+    case 'bar':
+      return [{
+        type: 'bar',
+        data: data.map(item => ({
+          gravedad: item.estado_gravedad,
+          cantidad: item.total_pacientes,
+          dias_promedio: item.promedio_dias_estancia
+        })),
+        title: 'Pacientes por Gravedad (Datos Reales)',
+        xAxis: 'gravedad',
+        yAxis: 'cantidad'
+      }];
+    default:
+      return generatePatientChartsFromData('pie', data);
+  }
+}
+
+function generateEmergencyChartsFromData(chartType: string, data: any[]): ChartData[] {
+  switch (chartType) {
+    case 'bar':
+      return [{
+        type: 'bar',
+        data: data.map(item => ({
+          prioridad: item.prioridad,
+          cantidad: item.total_emergencias,
+          tiempo_promedio: item.tiempo_promedio_atencion,
+          resueltas: item.emergencias_resueltas
+        })),
+        title: 'Emergencias por Prioridad (Datos Reales)',
+        xAxis: 'prioridad',
+        yAxis: 'cantidad'
+      }];
+    case 'pie':
+      return [{
+        type: 'pie',
+        data: data.map(item => ({
+          name: item.prioridad,
+          value: item.total_emergencias,
+          color: item.prioridad === 'roja' ? '#DC2626' :
+                 item.prioridad === 'amarilla' ? '#F59E0B' :
+                 item.prioridad === 'verde' ? '#10B981' : '#3B82F6'
+        })),
+        title: 'Distribución de Emergencias (Datos Reales)'
+      }];
+    default:
+      return generateEmergencyChartsFromData('bar', data);
+  }
+}
+
+function generateSurgeryChartsFromData(chartType: string, data: any[]): ChartData[] {
+  switch (chartType) {
+    case 'bar':
+      return [{
+        type: 'bar',
+        data: data.map(item => ({
+          quirofano: item.numero_quirofano,
+          programadas: item.cirugias_programadas_hoy,
+          completadas: item.cirugias_completadas,
+          en_proceso: item.cirugias_en_proceso,
+          pendientes: item.cirugias_pendientes
+        })),
+        title: 'Estado de Quirófanos (Datos Reales)',
+        xAxis: 'quirofano',
+        yAxis: 'cirugias'
+      }];
+    default:
+      return generateSurgeryChartsFromData('bar', data);
+  }
+}
+
+function generateStaffChartsFromData(chartType: string, data: any[]): ChartData[] {
+  switch (chartType) {
+    case 'bar':
+      return [{
+        type: 'bar',
+        data: data.map(item => ({
+          especialidad: item.especialidad,
+          total: item.total_personal,
+          activos: item.personal_activo,
+          emergencias: item.disponible_emergencias,
+          experiencia: item.experiencia_promedio
+        })),
+        title: 'Personal Médico por Especialidad (Datos Reales)',
+        xAxis: 'especialidad',
+        yAxis: 'cantidad'
+      }];
+    default:
+      return generateStaffChartsFromData('bar', data);
+  }
+}
+
+function generateHistoryChartsFromData(chartType: string, data: any[]): ChartData[] {
+  switch (chartType) {
+    case 'line':
+      return [{
+        type: 'line',
+        data: data.slice(0, 14).map(item => ({
+          fecha: new Date(item.fecha).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+          ocupacion: item.camas_ocupadas_dia,
+          criticos: item.pacientes_criticos,
+          graves: item.pacientes_graves
+        })),
+        title: 'Histórico de Ocupación (Datos Reales)',
+        xAxis: 'fecha',
+        yAxis: 'ocupacion'
+      }];
+    case 'area':
+      return [{
+        type: 'area',
+        data: data.slice(0, 7).map(item => ({
+          fecha: new Date(item.fecha).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' }),
+          ingresos: item.camas_ocupadas_dia,
+          altas: item.altas_mismo_dia,
+          criticos: item.pacientes_criticos
+        })),
+        title: 'Flujo de Pacientes (Datos Reales)',
+        xAxis: 'fecha',
+        yAxis: 'cantidad'
+      }];
+    default:
+      return generateHistoryChartsFromData('line', data);
   }
 }
 
