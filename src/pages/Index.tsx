@@ -1,7 +1,7 @@
-import { KlinikaAIChat } from "@/components/KlinikaAIChat";
+import { MedicalDashboard } from "@/components/MedicalDashboard";
 
 const Index = () => {
-  return <KlinikaAIChat />;
+  return <MedicalDashboard />;
 };
 
 export default Index;
