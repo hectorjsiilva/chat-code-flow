@@ -5,8 +5,7 @@ import { FixedChatInput } from "./FixedChatInput";
 import { ChartTypeSelector } from "./ChartTypeSelector";
 import { DynamicCharts } from "./DynamicCharts";
 import { generateCoherentSQL } from "@/utils/sqlGenerator";
-import { generateChartsFromRealData } from "@/utils/chartDataGenerator";
-import { useRealSupabaseData } from "@/hooks/useRealSupabaseData";
+import { generateCoherentChartData } from "@/utils/chartDataGenerator";
 import klinikaLogo from "@/assets/klinika-logo.avif";
 
 interface Message {
@@ -33,8 +32,6 @@ export function MedicalDashboard() {
   const [currentSQL, setCurrentSQL] = useState<SQLResult | null>(null);
   const [selectedChartType, setSelectedChartType] = useState<'bar' | 'line' | 'pie' | 'area' | 'scatter'>('bar');
   const [currentChartData, setCurrentChartData] = useState<any[]>([]);
-  
-  const { data: supabaseData, loading: queryLoading, executeQuery } = useRealSupabaseData();
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -64,13 +61,12 @@ export function MedicalDashboard() {
       setShowCode(true);
       setShowChartSelector(true);
       
-      setTimeout(async () => {
-        try {
-          await executeQuery(sqlResult.type);
-        } catch (error) {
-          console.error('Error ejecutando consulta:', error);
-          setIsProcessing(false);
-        }
+      setTimeout(() => {
+        // Generar datos aleatorios basados en el tipo de consulta
+        const mockChartData = generateCoherentChartData(sqlResult.type, defaultChart);
+        setCurrentChartData(mockChartData);
+        setShowCharts(true);
+        setIsProcessing(false);
       }, 1000);
     }, 1000);
   };
@@ -81,20 +77,12 @@ export function MedicalDashboard() {
 
   const handleChartTypeChange = (newType: 'bar' | 'line' | 'pie' | 'area' | 'scatter') => {
     setSelectedChartType(newType);
-    if (currentSQL && supabaseData) {
-      const newChartData = generateChartsFromRealData(currentSQL.type, newType, supabaseData);
+    if (currentSQL) {
+      // Generar nuevos datos aleatorios para el nuevo tipo de gráfico
+      const newChartData = generateCoherentChartData(currentSQL.type, newType);
       setCurrentChartData(newChartData);
     }
   };
-
-  React.useEffect(() => {
-    if (supabaseData && currentSQL && !queryLoading) {
-      const chartData = generateChartsFromRealData(currentSQL.type, selectedChartType, supabaseData);
-      setCurrentChartData(chartData);
-      setShowCharts(true);
-      setIsProcessing(false);
-    }
-  }, [supabaseData, currentSQL, selectedChartType, queryLoading]);
 
   const LoadingAnimation = ({ text }: { text: string }) => (
     <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 animate-bounce-in">
@@ -147,7 +135,7 @@ export function MedicalDashboard() {
             ))}
 
             {isProcessing && !showCode && (
-              <LoadingAnimation text="Analizando consulta y obteniendo datos de Supabase..." />
+              <LoadingAnimation text="Analizando consulta y generando SQL..." />
             )}
 
             {showCode && currentSQL && (
@@ -180,7 +168,7 @@ export function MedicalDashboard() {
             )}
 
             {isProcessing && showCode && !showCharts && (
-              <LoadingAnimation text="Generando visualizaciones con datos reales de Supabase..." />
+              <LoadingAnimation text="Generando visualizaciones con datos aleatorios..." />
             )}
 
             {showCharts && currentChartData.length > 0 && (
